@@ -1,0 +1,16 @@
+---
+- name: Get require values
+  block:
+    - name: Set resiliency status
+      ansible.builtin.set_fact:
+        uuid_cluster: "{{  host_response.data[1]['values'][0]['values'] }}"
+        host_name: "{{  host_response.data[0]['values'][0]['values'] }}"
+
+    - name: Update Data to global fact (data_resilency_status)
+      ansible.builtin.set_fact:
+        values_dict: "{{ values_dict |  combine({ uuid_cluster[0] : {'h_version': host_name}}, recursive=true) }}"
+
+  rescue:
+    - name: Update ERROR Data to global fact (data_resilency_status)
+      ansible.builtin.set_fact:
+        values_dict: "{{ values_dict |  combine({ uuid_cluster[0] : {'h_version': 'ERROR'}}, recursive=true) }}"

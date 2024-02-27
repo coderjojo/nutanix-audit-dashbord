@@ -1,0 +1,52 @@
+---
+- name: Try out roles
+  hosts: localhost
+  gather_facts: true
+  vars_files:
+    - vars/main.yml
+  tasks:
+
+    - name: Setup All require variables for playbooks
+      ansible.builtin.include_role:
+        name: nutanix_setup
+
+    - name: Perform Basic Checks
+      ansible.builtin.include_role:
+        name: nutanix_health_check
+
+    - name: Generate Report
+      ansible.builtin.include_role:
+        name: nutanix_generate_report
+      vars:
+        end_time: "{{ ansible_date_time.iso8601 }}"
+
+
+# If Web Server is running on different host then add them to inventory and edit below as the requirement.
+- name: Copy output files to Web Server
+  hosts: localhost
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Custome index.html
+      ansible.builtin.copy:
+        dest: /var/www/html/index.html
+        src: output/index.html
+        mode: '0644'
+
+    - name: Copy basic check
+      ansible.builtin.copy:
+        dest: /var/www/html/basic_checks.html
+        src: output/basic_checks.html
+        mode: '0644'
+
+    - name: Copy health check
+      ansible.builtin.copy:
+        dest: /var/www/html/health_checks.html
+        src: output/health_checks.html
+        mode: '0644'
+
+    - name: Copy json data
+      ansible.builtin.copy:
+        dest: /var/www/html/json_template.json
+        src: output/json_template.json
+        mode: '0644'

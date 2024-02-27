@@ -1,0 +1,73 @@
+---
+# tasks file for nutanix_health_check
+- name: Collect indvidiual prism element basic information
+  ansible.builtin.include_tasks: basic_checks.yml
+  with_items: "{{ pc_pe_uuid_dict | dict2items }}"
+  vars:
+    prism_v2_api: "https://{{ item.key }}:9440/PrismGateway/services/rest/v2.0"
+    prism_v1_api: "https://{{ item.key }}:9440/PrismGateway/services/rest/v1"
+    prism_v3_api: "https://{{ item.key }}:9440/api/nutanix/v3"
+
+# - name: Group Health Checks complex Information
+  # ansible.builtin.include_tasks: resiliency_checks.yml
+  # with_items: "{{ pc_pe_uuid_dict | dict2items }}"
+  # vars:
+    #  prism_v3_api: "https://{{ item.key }}:9440/api/nutanix/v3"
+
+- name: Additional Info for all clusters
+  ansible.builtin.include_tasks: additional_checks.yml
+  with_items: "{{ pc_pe_uuid_dict | dict2items }}"
+  vars:
+    prism_v2_api: "https://{{ item.key }}:9440/PrismGateway/services/rest/v2.0"
+    prism_v1_api: "https://{{ item.key }}:9440/PrismGateway/services/rest/v1"
+
+# - name: License Info for all clusters
+#  ansible.builtin.include_tasks: license_checks.yml
+#  with_items: "{{ pc_pe_uuid_dict | dict2items }}"
+#  vars:
+#    prism_v2_api: "https://{{ item.key }}:9440/PrismGateway/services/rest/v2.0"
+#    prism_v1_api: "https://{{ item.key }}:9440/PrismGateway/services/rest/v1"
+
+
+- name: Group Storage resiliency Checks complex Information
+  ansible.builtin.include_tasks: specs_checks.yml
+  with_items: "{{ pc_pe_uuid_dict | dict2items }}"
+  vars:
+    prism_v3_api: "https://{{ item.key }}:9440/api/nutanix/v3"
+    prism_v1_api: "https://{{ item.key }}:9440/PrismGateway/services/rest/v1"
+
+- name: Group Cluster resiliency Checks complex Information
+  ansible.builtin.include_tasks: resiliency_checks.yml
+  with_items: "{{ pc_pe_uuid_dict | dict2items }}"
+  vars:
+    prism_v3_api: "https://{{ item.key }}:9440/api/nutanix/v3"
+
+
+- name: Indvidiual Health Checks
+  ansible.builtin.include_tasks: health_checks.yml
+  with_items: "{{ pc_pe_uuid_dict | dict2items }}"
+  vars:
+    prism_v1_api: "https://{{ item.key }}:9440/PrismGateway/services/rest/v1"
+    prism_v3_api: "https://{{ item.key }}:9440/api/nutanix/v3"
+
+  
+
+- name: Get Cluster & VM Information
+  ansible.builtin.include_tasks: cluster_info.yml
+  with_items: "{{ pc_pe_uuid_dict | dict2items }}"
+  vars:
+    prism_v1_api: "https://{{ item.key }}:9440/PrismGateway/services/rest/v1"
+    prism_v3_api: "https://{{ item.key }}:9440/api/nutanix/v3"
+
+
+
+- name: Flush All the variables
+  ansible.builtin.include_tasks: flush_variables.yml
+
+- name: Debug
+  ansible.builtin.debug:
+    var: values_dict
+
+- name: Debug
+  ansible.builtin.debug:
+    var: global_summary_dict

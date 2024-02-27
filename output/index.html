@@ -1,0 +1,101 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Index Page</title>
+    <style>
+        body {
+            background-color: #4682B4;
+            font-family: Arial, sans-serif;
+        }
+
+        h1 {
+            text-align: center;
+            margin-top: 50px;
+        }
+
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 50px;
+        }
+
+        .link {
+            display: block;
+            padding: 20px;
+            background-color: #4CAF50;
+            color: #fff;
+            font-weight: bold;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+            margin: 0 20px;
+        }
+
+        .link:hover {
+            background-color: #3e8e41;
+        }
+
+        #clusterTable {
+            border-collapse: collapse;
+            width: 30%;
+            margin: 50px auto;
+            font-size: 1.2em;
+            border: 2px solid #ddd;
+        }
+
+        #clusterTable th {
+            font-weight: bold;
+            text-align: left;
+            padding: 12px;
+            border-bottom: 2px solid #ddd;
+        }
+
+        #clusterTable td {
+            padding: 12px;
+            border-bottom: 2px solid #ddd;
+        }
+
+        #clusterTable td:first-child {
+            font-weight: bold;
+        }
+
+    </style>
+</head>
+<body>
+    <h1>Add Company Name Here Nutanix Unified Cluster Reporting Dashboard</h1>
+    <div class="container">
+        <a class="link" href="basic_checks.html">Basic Checks</a>
+        <a class="link" href="health_checks.html">Health Checks</a>
+    </div>
+     
+    <table id="clusterTable">
+        <tr>
+            <th>Number of Prism Central</th>
+            <td>1</td>
+        </tr>
+
+        <tr>
+            <th>Number of Clusters</th>
+            <td>1</td>
+        </tr>
+
+        <tr>
+            <th>Number of Nodes</th>
+            <td>4</td>
+        </tr>
+
+        <tr>
+            <th>Cluster with Critical Host</th>
+            <td>0</td>
+        </tr>
+        <tr>
+            <th>Clusters with Critical Services</th>
+            <td>0</td>
+        </tr>
+    </table>
+    <p style="text-align: center;">Report generated at 2024-02-26 19:04:58 UTC</p>
+</body>
+</html>
+

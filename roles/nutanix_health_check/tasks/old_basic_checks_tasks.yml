@@ -1,0 +1,162 @@
+---
+- name: Perform all the basic checks
+  block:
+    - name: Get data to perform basic check
+      ansible.builtin.uri:
+        url: "{{ prism_v2_api }}/clusters/{{ uuid }}"
+        method: GET
+        status_code: 200
+        headers:
+          Content-Type: "application/json"
+          Accept: "application/json"
+          Authorization: "{{ nutanix_api_auth }}"
+        validate_certs: "{{ validate_certs }}"
+      register: basic_check
+
+    - name: Get data for encryption status
+      ansible.builtin.uri:
+        url: "{{ prism_v2_api }}/data_at_rest_encryption?proxyClusterUuid={{ uuid }}"
+        method: GET
+        status_code: 200
+        headers:
+          Content-Type: "application/json"
+          Accept: "application/json"
+          Authorization: "{{ nutanix_api_auth }}"
+          Cookie: "JSESSIONID={{ basic_check.cookies.JSESSIONID }}"
+        validate_certs: "{{ validate_certs }}"
+      register: encryption_check
+
+    - name: Get data for Hypervisor Version
+      ansible.builtin.uri:
+        url: "{{ prism_v1_api }}/utils/entities?entitytype=host&projection=hypervisor_full_name&proxyclusteruuid={{ uuid }}"
+        method: GET
+        status_code: 200
+        headers:
+          Content-Type: "application/json"
+          Accept: "application/json"
+          Authorization: "{{ nutanix_api_auth }}"
+          Cookie: "JSESSIONID={{ basic_check.cookies.JSESSIONID }}"
+        validate_certs: "{{ validate_certs }}"
+      register: version_check
+
+
+    - name: Parse JSON responce
+      ansible.builtin.set_fact:
+        check_response: "{{ basic_check.json }}"
+        encryption_responce: "{{ encryption_check.json }}"
+        version_responce: "{{ version_check.json }}"
+
+
+    - name: Set Facts for check constant values
+      ansible.builtin.set_fact:
+        cluster_fqdn: "{{ check_response.cluster_fully_qualified_domain_name }}"
+        is_encrypted: "{{ encryption_responce.software_encryption_scope }}"
+        data_in_transit_enabled: "{{ check_response.data_in_transit_encryption_dto.enabled }}"
+        is_lts: "{{ check_response.is_lts }}"
+        enable_lock_down: "{{ check_response.enable_lock_down }}"
+        has_self_encrypting_drive: "{{ check_response.has_self_encrypting_drive }}"
+        num_nodes: "{{ check_response.num_nodes}}"
+        enable_rebuild_reservation: "{{ check_response.enable_rebuild_reservation }}"
+        version: "{{ check_response.version }}"
+        h_version: "{{ version_responce.entities[0].hypervisor_full_name }}"
+
+        name_servers: "{{ check_response.name_servers | length | int  }}"
+        ntp_servers: "{{ check_response.ntp_servers | length | int}}"
+
+        current_redundancy_factor: "{{ check_response.cluster_redundancy_state.current_redundancy_factor }}"
+        desired_redundancy_factor: "{{ check_response.cluster_redundancy_state.desired_redundancy_factor }}"
+
+        enable_aide: "{{ check_response.security_compliance_config.enable_aide }}"
+        enable_core: "{{ check_response.security_compliance_config.enable_core }}"
+        enable_banner: "{{ check_response.security_compliance_config.enable_banner }}"
+        enable_high_strength_password: "{{ check_response.security_compliance_config.enable_high_strength_password }}"
+        ssh_security_level: "{{ check_response.security_compliance_config.ssh_security_level }}"
+
+        enable_aide_h: "{{ check_response.hypervisor_security_compliance_config.enable_aide }}"
+        enable_core_h: "{{ check_response.hypervisor_security_compliance_config.enable_core }}"
+        enable_banner_h: "{{ check_response.hypervisor_security_compliance_config.enable_banner }}"
+        enable_high_strength_password_h: "{{ check_response.hypervisor_security_compliance_config.enable_high_strength_password }}"
+        ssh_security_level_h: "{{ check_response.hypervisor_security_compliance_config.ssh_security_level }}"
+
+        storage_usage_bytes: "{{ check_response.usage_stats['storage.usage_bytes'] }}"
+        fault_tolerance_domain: "{{ check_response.fault_tolerance_domain_type }}"
+
+
+    - name: Set Fact for check cluster redundancy state
+      ansible.builtin.set_fact:
+        cluster_redundancy_state: "{{ 'GOOD' if current_redundancy_factor == desired_redundancy_factor else 'BAD'}}"
+
+    - name: Set Fact for check cluster encryption status
+      ansible.builtin.set_fact:
+        is_encrypted: "{{ 'True' if is_encrypted != '' else 'False'}}"
+
+
+    - name: Add Previous Checks to Global Fact Dict
+      ansible.builtin.set_fact:
+        values_dict:
+          "{{ values_dict | combine({check_response.uuid: {
+          'cluster_fqdn' : cluster_fqdn,
+          'is_encrypted' : is_encrypted,
+          'is_lts' : is_lts,
+          'enable_lock_down' : enable_lock_down,
+          'enable_rebuild_reservation' : enable_rebuild_reservation,
+          'name_servers' : name_servers,
+          'ntp_servers' : ntp_servers,
+          'cluster_redundancy_state' : cluster_redundancy_state,
+          'enable_aide' : enable_aide,
+          'enable_core' : enable_core,
+          'enable_banner' : enable_banner,
+          'enable_high_strength_password' : enable_high_strength_password,
+          'ssh_security_level' : ssh_security_level,
+          'enable_aide_h' : enable_aide_h,
+          'enable_core_h' : enable_core_h,
+          'enable_banner_h' : enable_banner_h,
+          'enable_high_strength_password_h' : enable_high_strength_password_h,
+          'ssh_security_level_h' : ssh_security_level_h,
+          'storage_usage_bytes' : storage_usage_bytes,
+          'fault_tolerance_domain': fault_tolerance_domain,
+          'num_nodes': num_nodes,
+          'data_in_transit_enabled': data_in_transit_enabled,
+          'version': version,
+          'h_version': h_version,
+          'current_redundancy_factor': 'current_redundancy_factor'
+          }}, recursive=true) }}"
+
+
+    - name: Get the path of the file
+      ansible.builtin.debug:
+        var: values_dict
+      no_log: true
+
+
+  rescue:
+    - name: Add Previous Checks to Global Fact Dict
+      ansible.builtin.set_fact:
+        values_dict:
+          "{{ values_dict | combine({check_response.uuid: {
+          'cluster_fqdn' : '',
+          'is_encrypted' : '',
+          'is_lts' : '',
+          'enable_lock_down' : '',
+          'enable_rebuild_reservation' : '',
+          'name_servers' : '',
+          'ntp_servers' : '',
+          'cluster_redundancy_state' : '',
+          'enable_aide' : '',
+          'enable_core' : ,
+          'enable_banner' : '',
+          'enable_high_strength_password' : '',
+          'ssh_security_level' : '',
+          'enable_aide_h' : '',
+          'enable_core_h' : '',
+          'enable_banner_h' : '',
+          'enable_high_strength_password_h' : '',
+          'ssh_security_level_h' : '',
+          'storage_usage_bytes' : ,
+          'fault_tolerance_domain': '',
+          'num_nodes': '',
+          'data_in_transit_enabled': '',
+          'version': '',
+          'h_version': '',
+          'current_redundancy_factor': ''
+          }}, recursive=true) }}"

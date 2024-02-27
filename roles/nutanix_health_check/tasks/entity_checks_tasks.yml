@@ -1,0 +1,33 @@
+- name: Calculate memory size
+  ansible.builtin.set_fact:
+    memory_size_bytes: 0
+    ha_memory_reserved_bytes: 0
+
+- name: Go each entities
+  block:
+    - name: Extract memory sizes
+      ansible.builtin.set_fact:
+        memory_size_bytes: "{{ item.value.successResponse.entities | map(attribute='memory_size_bytes') | map('int') | sum }}"
+        ha_memory_reserved_bytes: "{{ item.value.successResponse.entities | map(attribute='ha_memory_reserved_bytes') | map('int') | sum }}"
+
+    - name: Set storage summary status
+      ansible.builtin.set_fact:
+        ha_memory_reserved_ppi: "{{ (( ha_memory_reserved_bytes | float / memory_size_bytes | float ) * 100.00) | float  }}"
+
+    - name: Display memory sizes
+      ansible.builtin.debug:
+        msg: |
+          Total Memory Size Bytes: {{ memory_size_bytes }}
+          Total HA Memory Reserved Bytes: {{ ha_memory_reserved_bytes }}
+          {{ ha_memory_reserved_ppi }}
+
+    - name: Set values to global dict
+      ansible.builtin.set_fact:
+        values_dict: "{{ values_dict | combine({
+          item.key : { 'hypervisor_memory_usage': (values_dict[item.key].hypervisor_memory_usage | float + ha_memory_reserved_ppi | float) | round(2) }},
+          recursive=true)}}"
+
+  rescue:
+    - name: Display error message
+      ansible.builtin.debug:
+        msg: "An error occurred : {{item.value}}"

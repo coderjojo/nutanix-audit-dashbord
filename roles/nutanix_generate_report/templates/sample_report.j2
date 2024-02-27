@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Basic Checks</title>
+	<style>
+		table {
+			border-collapse: collapse;
+			width: 100%;
+		}
+
+		th, td {
+			text-align: left;
+			padding: 8px;
+			border: 1px solid black;
+		}
+
+		tr:nth-child(even) {
+			background-color: #f2f2f2;
+		}
+
+		th {
+			background-color: #4CAF50;
+			color: white;
+		}
+	</style>
+</head>
+<body>
+
+	<table>
+		<thead>
+			<tr>
+				<th>Cluster Name</th>
+				<th>Cluster FQDN</th>
+				<th>Encrypted</th>
+				<th>LTS</th>
+				<th>Lock Down Enabled</th>
+				<th>Rebuild Reservation Enabled</th>
+				<th>Name Servers</th>
+				<th>AIDE Enabled</th>
+				<th>CORE Enabled</th>
+				<th>Banner Enabled</th>
+				<th>High Strength Password Enabled</th>
+				<th>SSH Security Level</th>
+				<th>AIDE H</th>
+				<th>CORE H</th>
+				<th>Banner H</th>
+				<th>High Strength Password H</th>
+				<th>SSH Security Level H</th>
+			</tr>
+		</thead>
+		<tbody>
+			{% for uuid, value in values_dict.items() %}
+          <tr>
+            <td>{{ value.cluster_name }}</td>
+            <td>{{ value.cluster_fqdn }}</td>
+            <td>{{ value.is_encrypted }}</td>
+            <td>{{ value.is_lts }}</td>
+            <td>{{ value.enable_lock_down }}</td>
+            <td>{{ value.enable_rebuild_reservation }}</td>
+            <td>{{ value.name_servers }}</td>
+            <td>{{ value.enable_aide }}</td>
+            <td>{{ value.enable_core }}</td>
+            <td>{{ value.enable_banner }}</td>
+            <td>{{ value.enable_high_strength_password }}</td>
+            <td>{{ value.ssh_security_level }}</td>
+            <td>{{ value.enable_core_h }}</td>
+            <td>{{ value.enable_banner_h }}</td>
+            <td>{{ value.enable_high_strength_password_h }}</td>
+            <td>{{ value.ssh_security_level_h }}</td>
+          </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+	<table>
+		<thead>
+			<tr>
+				<th>Cluster Name</th>
+				<th>Cluster Redundancy State</th>
+        <th>Cluster Data Resiliency Summary</th>
+        <th>Cluster Configured Failure Domain</th>
+        <th>Cluster Configured Fault Tolerance</th>
+        <th>Cluster Current Fault Tolerance</th>
+			</tr>
+		</thead>
+		<tbody>
+			{% for uuid, value in values_dict.items() %}
+          <tr>
+            <td>{{ value.cluster_name }}</td>
+            <td>{{ value.cluster_redundancy_state }}</td>
+            <td>{{ value.data_resilency_desc}}</td>
+            <td>{{ value.configured_failure_domain }}</td>
+            <td>{{ value.configured_fault_tolerance}}</td>
+            <td>{{ value.current_fault_tolerance }}</td>
+          </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+</html>

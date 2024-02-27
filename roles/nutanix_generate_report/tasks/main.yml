@@ -1,0 +1,22 @@
+---
+# tasks file for nutanix_generate_report
+
+- name: Render HTML template with values_dict data
+  template:
+    src: main_page.j2
+    dest: output/index.html
+
+- name: Render HTML template with values_dict data
+  ansible.builtin.template:
+    src: basic_checks.j2
+    dest: output/basic_checks.html
+
+- name: Render HTML template with values_dict data
+  template:
+    src: health_checks.j2
+    dest: output/health_checks.html
+
+- name: Render HTML JSON template with values_dict data
+  template:
+    src: json_template.j2
+    dest: output/json_template.json

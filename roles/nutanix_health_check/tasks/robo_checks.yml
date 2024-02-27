@@ -1,0 +1,52 @@
+---
+- name: Get require details for Robo check
+  block:
+    - name: Get cluster require cookies
+      ansible.builtin.uri:
+        url: "{{ prism_v2_api }}/authconfig"
+        method: GET
+        status_code: 200
+        headers:
+          Content-Type: "application/json"
+          Accept: "application/json"
+          Authorization: "{{ nutanix_api_auth }}"
+        body_format: json
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ timeout }}"
+      register: response
+
+    - name: Get robo values
+      ansible.builtin.uri:
+        url: "{{ prism_v2_api }}/cluster/metro_witness?proxyClusterUuid=all_clusters"
+        method: GET
+        status_code: 200
+        headers:
+          Content-Type: "application/json"
+          Accept: "application/json"
+          Authorization: "{{ nutanix_api_auth }}"
+          Cookie: "{{ response.set_cookie }}"
+        body_format: json
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ timeout }}"
+      register: metro_values
+
+    - name: Create robo mapping
+      ansible.builtin.set_fact:
+        metro_mapping: "{{ metro_mapping | default({}) | combine({ item.key: item.value.ip_addresses | default(item.value.type)}) }}"
+      with_items: "{{ metro_values.json | dict2items }}"
+
+    - name: Add values to global dict
+      ansible.builtin.set_fact:
+        values_dict: "{{ values_dict | default({}) | combine({
+         item.key : {'witness_added' : 'N/A' if values_dict[item.key].num_nodes > 2 else true if item.value != '[]' else false } },
+         recursive=true)}}"
+      with_items: "{{ metro_mapping | dict2items }}"
+
+
+  rescue:
+    - name: Error occured set default values to global dict
+      ansible.builtin.set_fact:
+        values_dict: "{{ values_dict | combine({
+          item.key : { 'witnese_added': 'ERROR_W'}},
+          recursive=true)}}"
+      with_items: "{{ metro_values.json | dict2items}}"

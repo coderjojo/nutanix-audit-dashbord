@@ -1,0 +1,43 @@
+---
+
+- name: Get cluster require cookies
+  ansible.builtin.uri:
+    url: "{{ prism_v1_api }}/authconfig"
+    method: GET
+    status_code: 200
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+      Authorization: "{{ nutanix_api_auth }}"
+    body_format: json
+    validate_certs: "{{ validate_certs }}"
+    timeout: "{{ timeout }}"
+  register: response
+
+- name: Extract cookie value
+  ansible.builtin.set_fact:
+    jsession_id: "{{ response.set_cookie}}"
+
+
+- name: Get cluster health values
+  ansible.builtin.uri:
+    url: "{{ prism_v1_api }}/ncc/run_summary?proxyClusterUuid=all_clusters"
+    method: GET
+    status_code: 200
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+      Authorization: "{{ nutanix_api_auth }}"
+      Cookie: "{{ jsession_id }}"
+    body_format: json
+    validate_certs: "{{ validate_certs }}"
+    timeout: "{{ timeout }}"
+  register: health_check
+  no_log: true
+
+- name: Call health_checks_tasks to perform check on invidiual cluster
+  ansible.builtin.include_tasks: health_checks_tasks.yml
+  loop: "{{ health_check.json | dict2items }}"
+  loop_control:
+    loop_var: cluster_health
+  no_log: true

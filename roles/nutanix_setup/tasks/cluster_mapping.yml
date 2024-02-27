@@ -1,0 +1,89 @@
+---
+- name: Generate basic authorization string for PE
+  ansible.builtin.set_fact:
+      nutanix_auth_string: "{{ vault_prism_user }}:{{ prism_password }}"
+  no_log: true
+
+- name: Generate authorization header for PE
+  ansible.builtin.set_fact:
+    nutanix_api_auth: "Basic {{ nutanix_auth_string | b64encode(encoding='ascii') }}"
+  no_log: true
+
+- name: Get cluster list from Prism Central
+  ansible.builtin.uri:
+    url: "{{ prism_v2_api }}/clusters"
+    method: GET
+    status_code: 200
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+      Authorization: "{{ nutanix_api_auth }}"
+    validate_certs: "{{ validate_certs }}"
+    timeout: 300 
+  register: cluster_list_response
+
+- name: Clear temp values
+  ansible.builtin.set_fact:
+    external_ip_array: []
+    pe_uuid_array: []
+
+- name: Debug address
+  ansible.builtin.debug:
+    var: address
+  no_log: true
+
+# Below will create list of external ips which are currently availble with current address i.e. address
+- name: Store all the external_ips which are registed with this PC.
+  ansible.builtin.set_fact:
+    external_ip_array: "{{ external_ip_array | default([]) + [ item.cluster_external_ipaddress | string ] }}"
+    pe_uuid_array: "{{ pe_uuid_array | default([]) + [ item.uuid | string ] }}"
+  with_items: "{{ cluster_list_response.json.entities }}"
+  no_log: true
+
+
+# NOTE: create mapping between all the cluster_address and it's associated PE UUIDS & external IPs so that we can use or pass as query later
+
+- name: Create Mapping between cluster address and related PE external IPs
+  ansible.builtin.set_fact:
+    pc_pe_ip_dict: "{{ pc_pe_ip_dict | default({}) | combine({ address : external_ip_array }) }}"
+
+- name: Debug responce
+  ansible.builtin.debug:
+    var: pc_pe_ip_dict
+
+- name: Create Mapping between cluster address and related PE uuids
+  ansible.builtin.set_fact:
+    pc_pe_uuid_dict: "{{ pc_pe_uuid_dict | default({}) | combine({ address : pe_uuid_array }) }}"
+
+- name: Debug responce
+  ansible.builtin.debug:
+    var: pc_pe_uuid_dict
+
+
+# NOTE: Create Mapping Betweeen PE UUID and it's extneral IP address; just created we need of any checks
+
+- name: Create Mapping between uuid and external IPs of the cluster registed which this prism Central
+  ansible.builtin.set_fact:
+    uuid_pe_dict: "{{ uuid_pe_dict | default({}) | combine({ item.uuid : item.cluster_external_ipaddress }, recursive=true)}}"
+  with_items: "{{ cluster_list_response.json.entities}}"
+  when:
+    - "item.uuid not in uuid_pe_dict.keys()"
+  no_log: true
+
+- name: Debug responce
+  ansible.builtin.debug:
+    var: uuid_pe_dict
+
+# NOTE: Values_dict will be our global audit dict which will store all the check values
+
+- name: Create Mapping between uuid and all the basic details
+  ansible.builtin.set_fact:
+    values_dict: "{{ values_dict | default({}) | combine({ item.uuid : {'cluster_name' : item.name} }, recursive=true)}}"
+  with_items: "{{ cluster_list_response.json.entities}}"
+  when:
+    - "item.uuid not in values_dict.keys()"
+  no_log: true
+
+- name: Debug responce
+  ansible.builtin.debug:
+    var: values_dict

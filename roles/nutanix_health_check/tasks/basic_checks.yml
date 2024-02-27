@@ -1,0 +1,102 @@
+---
+- name: Get data to perform basic check
+  ansible.builtin.uri:
+    url: "{{ prism_v2_api }}/clusters"
+    method: GET
+    status_code: 200
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+      Authorization: "{{ nutanix_api_auth }}"
+    validate_certs: "{{ validate_certs }}"
+    timeout: "{{ timeout }}"
+  register: basic_check
+
+- name: Set values for global summary
+  ansible.builtin.set_fact:
+    global_num_clusters: "{{ basic_check.json.metadata.total_entities | int }}"
+
+
+- name: Create a global dict for the summary
+  ansible.builtin.set_fact:
+    global_summary_dict: "{{ global_summary_dict | default({}) | combine({ 'global_num_clusters' : (global_summary_dict['global_num_clusters'] | default(0) + (global_num_clusters | int) | default(0)) },
+     recursive=true)}}"
+
+- name: Call basic_checks_tasks to perform check on invidiual cluster
+  ansible.builtin.include_tasks: info_checks_tasks.yml
+  loop: "{{ basic_check.json.entities }}"
+  loop_control:
+    loop_var: check_response
+  no_log: true
+
+- name: Get cluster Memory Usage
+  ansible.builtin.uri:
+    url: "{{ prism_v1_api }}/utils/entities?entityType=host&projection=memory_size_bytes%2Cha_memory_reserved_bytes&proxyClusterUuid=all_clusters"
+    method: GET
+    status_code: 200
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+      Authorization: "{{ nutanix_api_auth }}"
+      Cookie: "{{ basic_check.set_cookie }}"
+    validate_certs: "{{ validate_certs }}"
+    timeout: "{{ timeout }}"
+  register: entity_check
+
+- name: Call entity_checks_tasks to perform check on invidiual cluster
+  ansible.builtin.include_tasks: entity_checks_tasks.yml
+  with_items: "{{ entity_check.json | dict2items }}"
+
+
+- name: Get cluster encryption status
+  ansible.builtin.uri:
+    url: "{{ prism_v3_api }}/groups"
+    method: GET
+    status_code: 200
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+      Authorization: "{{ nutanix_api_auth }}"
+    body_format: json
+    body:
+      entity_type: "cluster"
+      group_member_attributes:
+        - attribute: "encryption_scope"
+      group_member_count: 50
+      group_member_offset: 0
+    validate_certs: "{{ validate_certs }}"
+    timeout: "{{ timeout }}"
+  register: encryption_check
+
+- name: Call encryption_checks_tasks to perform check on invidiual cluster
+  ansible.builtin.include_tasks: encryption_checks_tasks.yml
+  with_items: "{{ encryption_check.json.group_results[0].entity_results }}"
+  loop_control:
+    loop_var: encryption_response
+  no_log: true
+
+- name: Get host values
+  ansible.builtin.uri:
+    url: "{{ prism_v3_api }}/groups"
+    method: GET
+    status_code: 200
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+      Authorization: "{{ nutanix_api_auth }}"
+    body_format: json
+    body:
+      entity_type: "host"
+      group_member_attributes:
+        - attribute: "hypervisor_full_name"
+        - attribute: "_cluster_uuid_"
+    validate_certs: "{{ validate_certs }}"
+    timeout: "{{ timeout }}"
+  register: host_status
+
+- name: Call host_checks_tasks to perform check on invidiual cluster
+  ansible.builtin.include_tasks: host_checks_tasks.yml
+  with_items: "{{ host_status.json.group_results[0].entity_results }}"
+  loop_control:
+    loop_var: host_response
+  no_log: true

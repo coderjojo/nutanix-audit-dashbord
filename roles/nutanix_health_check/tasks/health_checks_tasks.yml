@@ -1,0 +1,83 @@
+---
+- name: Get the require details for cluster health
+  block:
+    
+    - name: Set fact for has_critical_hosts
+      ansible.builtin.set_fact:
+        has_critical_host: "{{ 'True' if cluster_health.value.successResponse[0].healthSummary.Critical | int > 0 else 'False' }}"
+
+    - name: Set fact for has_critical_disks
+      ansible.builtin.set_fact:
+        has_critical_disks: "{{ 'True' if cluster_health.value.successResponse[1].healthSummary.Critical | int > 0 else 'False' }}"
+
+    - name: Set fact for has_critical_vms
+      ansible.builtin.set_fact:
+        has_critical_vms: "{{ 'True' if cluster_health.value.successResponse[2].healthSummary.Critical | int > 0 else 'False' }}"
+
+    - name: Set fact for has_critical_remote_sites
+      ansible.builtin.set_fact:
+        has_critical_remote_sites: "{{ 'True' if cluster_health.value.successResponse[3].healthSummary.Critical | int > 0 else 'False' }}"
+
+    - name: Set fact for has_critical_pd
+      ansible.builtin.set_fact:
+        has_critical_protection_domains: "{{ 'True' if cluster_health.value.successResponse[4].healthSummary.Critical | int > 0 else 'False' }}"
+
+    - name: Set fact for has_critical_storage_pools
+      ansible.builtin.set_fact:
+        has_critical_storage_pools: "{{ 'True' if cluster_health.value.successResponse[5].healthSummary.Critical | int > 0 else 'False' }}"
+
+    - name: Set fact for has_critical_container
+      ansible.builtin.set_fact:
+        has_critical_containers: "{{ 'True' if cluster_health.value.successResponse[6].healthSummary.Critical | int > 0 else 'False' }}"
+
+    - name: Set fact for has_critical_cluster_service
+      ansible.builtin.set_fact:
+        has_critical_cluster_service: "{{ 'True' if cluster_health.value.successResponse[7].healthSummary.Critical | int > 0 else 'False' }}"
+
+    - name: Set fact for has_critical_volume_group
+      ansible.builtin.set_fact:
+        has_critical_volume_groups: "{{ 'True' if cluster_health.value.successResponse[8].healthSummary.Critical | int > 0 else 'False' }}"
+
+
+    - name: Add Previous Health Checks to Global Fact Dict
+      ansible.builtin.set_fact:
+        values_dict:
+          "{{ values_dict | default({}) | combine({cluster_health.key: {
+          'has_critical_vms' : has_critical_vms,
+          'has_critical_host' : has_critical_host,
+          'has_critical_disks' : has_critical_disks,
+          'has_critical_storage_pools' : has_critical_storage_pools,
+          'has_critical_remote_sites' : has_critical_remote_sites,
+          'has_critical_containers' : has_critical_containers,
+          'has_critical_protection_domains' : has_critical_protection_domains,
+          'has_critical_cluster_service' : has_critical_cluster_service,
+          'has_critical_volume_groups' : has_critical_volume_groups
+          }}, recursive=true) }}"
+
+
+    - name: Increase the global health cout
+      ansible.builtin.set_fact:
+        total_critical_vms:  "{{ total_clusters_vms | default(0) | int+ ( has_critical_vms is truthy | ternary(1, 0)) | int }}"
+        total_critical_host:  "{{ total_critical_host | default(0) | int + ( has_critical_host is truthy | ternary(1, 0)) | int }}"
+        total_critical_disks:  "{{ total_critical_disks | default(0) | int + ( has_critical_disks is truthy | ternary(1, 0)) | int }}"
+        total_critical_storage_pools:  "{{ total_critical_storage_pools | default(0) | int + ( has_critical_storage_pools is truthy | ternary(1, 0)) | int }}"
+        total_critical_remote_sites:  "{{ total_critical_remote_sites | default(0) | int + ( has_critical_remote_sites is truthy | ternary(1, 0)) | int }}"
+        total_critical_containers:  "{{ total_critical_containers | default(0) | int + ( has_critical_containers is truthy | ternary(1, 0)) | int }}"
+        total_critical_protection_domains:  "{{ total_critical_protection_domains | default(0) | int + ( has_critical_protection_domains is truthy | ternary(1, 0)) | int }}"
+        total_critical_service:  "{{ total_critical_service | default(0) | int + ( has_critical_cluster_service is truthy | ternary(1, 0)) | int }}"
+        total_critical_volume_groups:  "{{ total_critical_volume_groups | default(0) | int + (has_critical_volume_groups is truthy | ternary(1, 0)) | int }}"
+  rescue:
+    - name: Error Occured "{{ cluster_health.value }}", setting error values
+      ansible.builtin.set_fact:
+        values_dict:
+          "{{ values_dict | default({}) | combine({cluster_health.key: {
+          'has_critical_vms' : 'ERROR',
+          'has_critical_host' : 'ERROR',
+          'has_critical_disks' : 'ERROR',
+          'has_critical_storage_pools' : 'ERROR',
+          'has_critical_remote_sites' : 'ERROR',
+          'has_critical_containers' : 'ERROR',
+          'has_critical_protection_domains' : 'ERROR',
+          'has_critical_cluster_service' : 'ERROR',
+          'has_critical_volume_groups' : 'ERROR'
+          }}, recursive=true) }}"

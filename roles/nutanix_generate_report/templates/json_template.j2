@@ -1,0 +1,9 @@
+{
+  {% for outer_key, outer_value in values_dict.items() %}
+    "{{ outer_key }}": {
+      {% for inner_key, inner_value in outer_value.items() %}
+        "{{ inner_key }}": "{{ inner_value }}"{% if not loop.last %},{% endif %}
+      {% endfor %}
+    }{% if not loop.last %},{% endif %}
+  {% endfor %}
+}

@@ -1,0 +1,9 @@
+---
+- name: Go through individual cluster for license info.
+  ansible.builtin.set_fact:
+    license_list: "{{ item.value.successResponse.licenseInfoDTO.pcDetailsDTO.licenses | map(attribute='name') | list }}"
+
+
+- name: Debug
+  ansible.builtin.debug:
+    var: license_list

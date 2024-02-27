@@ -1,0 +1,31 @@
+---
+- name: Get require details for storage resiliency
+  block:
+    - name: Set require values
+      ansible.builtin.set_fact:
+        uuid: "{{ entity_val.entity_id }}"
+
+    - name: Set fault Tolerant capacity values
+      ansible.builtin.set_fact:
+        fault_tolerant_storage: "{{entity_val.data[0]['values'][0]['values'][0] | float }}"
+
+    - name: Set storage usage values from values_dict
+      ansible.builtin.set_fact:
+        current_usage: "{{values_dict[entity_val.entity_id]['storage_usage_bytes'] | float}}"
+
+    - name: Set storage summary status
+      ansible.builtin.set_fact:
+        node_fault_tolerant_capacity_per: "{{ (( current_usage | float / fault_tolerant_storage | float ) * 100.00) | float | round(2) }}"
+        debug_msg: "current_usage={{ current_usage }}, fault_tolerant_storage={{ fault_tolerant_storage }}"
+
+    - name: Set values to global dict
+      ansible.builtin.set_fact:
+        values_dict: "{{ values_dict | combine({
+          uuid : { 'node_fault_tolerant_capacity_per': (node_fault_tolerant_capacity_per | float) }},
+          recursive=true)}}"
+  rescue:
+    - name: Set values to global dict for error node_fault_toleran_capacity_per
+      ansible.builtin.set_fact:
+        values_dict: "{{ values_dict | combine({
+          uuid : { 'node_fault_tolerant_capacity_per': -1}},
+          recursive=true)}}"

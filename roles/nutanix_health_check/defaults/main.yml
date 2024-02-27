@@ -1,0 +1,15 @@
+---
+# defaults file for nutanix_init
+global_debug: false
+
+# cluster settings
+prism_ip: 10.38.96.132
+pe_ip: 10.38.96.37
+prism_user: "admin"
+prism_password: "Nutanix2Tech1001!"
+pe_password: "Nutanix2Tech092!"
+prism_v3_api: "https://{{ prism_ip }}:9440/api/nutanix/v3"
+prism_v2_api: "https://{{ pe_ip }}:9440/PrismGateway/services/rest/v2.0"
+prism_v1_api: "https://{{ pe_ip }}:9440/PrismGateway/services/rest/v1"
+prism_type: ""
+validate_certs: false

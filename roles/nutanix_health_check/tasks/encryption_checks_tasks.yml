@@ -1,0 +1,41 @@
+---
+
+- name: Indivual Cluster Encryption status
+  block:
+    - name: Parse JSON responce
+      ansible.builtin.set_fact:
+        is_encrypted: "{{ encryption_response.data[0]['values'] }}"
+
+    - name: Parse JSON responce
+      ansible.builtin.debug:
+        var: "{{ encryption_response.data[0]['values'] }}"
+
+
+    - name: Parse JSON responce
+      ansible.builtin.set_fact:
+        is_encrypted: "{{ encryption_response.data[0]['values'] }}"
+
+
+    - name: Set Fact for check cluster encryption status
+      ansible.builtin.set_fact:
+        is_encrypted: "{{ 'True' if is_encrypted | length > 0  else 'False'}}"
+
+    - name: Set Fact for check cluster encryption status
+      ansible.builtin.set_fact:
+        is_encrypted: "{{ is_encrypted if values_dict[encryption_response.entity_id].num_nodes > 2  else 'N/A'}}"
+
+    - name: Add Previous Checks to Global Fact Dict
+      ansible.builtin.set_fact:
+        values_dict:
+          "{{ values_dict | combine({encryption_response.entity_id: {
+          'is_encrypted' : is_encrypted
+          }}, recursive=true) }}"
+
+  rescue:
+
+    - name: Add Previous Checks to Global Fact Dict
+      ansible.builtin.set_fact:
+        values_dict:
+          "{{ values_dict | combine({encryption_response.entity_id: {
+          'is_encrypted' : 'ERROR'
+          }}, recursive=true) }}"

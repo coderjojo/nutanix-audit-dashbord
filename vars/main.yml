@@ -1,0 +1,23 @@
+---
+company_name: "Add Company Name Here"
+
+# Add PC Name & IP below:
+prism_central1: 10.38.84.39
+
+# Can Add multiple PC if required to monitor
+#prism_central2: 10.215.100.101
+
+# Add above declared PC in below list to create a global list
+prism_central_array: ["{{ prism_central1 }}"]
+
+timeout: 30
+uuid_pe_dict: {}
+values_dict: {}
+external_ip_array: []
+pe_uuid_array: []
+
+prism_v3_api: "https://{}:9440/api/nutanix/v3"
+prism_v2_api: "https://{}:9440/PrismGateway/services/rest/v2.0"
+prism_v1_api: "https://{}:9440/PrismGateway/services/rest/v1"
+prism_type: ""
+validate_certs: false

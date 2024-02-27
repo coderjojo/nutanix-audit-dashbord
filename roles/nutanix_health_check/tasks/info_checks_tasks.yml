@@ -1,0 +1,123 @@
+---
+- name: Get all require values
+  block:
+    - name: Set Facts for check constant values
+      ansible.builtin.set_fact:
+        cluster_fqdn: "{{ check_response.cluster_fully_qualified_domain_name }}"
+        cluster_external_ipaddress: "{{ check_response.cluster_external_ipaddress }}"
+        data_in_transit_enabled: "{{ check_response.data_in_transit_encryption_dto.enabled }}"
+        is_lts: "{{ check_response.is_lts }}"
+        enable_lock_down: "{{ check_response.enable_lock_down }}"
+        has_self_encrypting_drive: "{{ check_response.has_self_encrypting_drive }}"
+        num_nodes: "{{ check_response.num_nodes}}"
+        enable_rebuild_reservation: "{{ check_response.enable_rebuild_reservation }}"
+        version: "{{ check_response.version }}"
+        hypervisor_types: "{{ check_response.hypervisor_types }}"
+
+        name_servers: "{{ check_response.name_servers | length | int  }}"
+        ntp_servers: "{{ check_response.ntp_servers | length | int}}"
+
+        current_redundancy_factor: "{{ check_response.cluster_redundancy_state.current_redundancy_factor }}"
+        desired_redundancy_factor: "{{ check_response.cluster_redundancy_state.desired_redundancy_factor }}"
+
+        enable_aide: "{{ check_response.security_compliance_config.enable_aide }}"
+        enable_core: "{{ check_response.security_compliance_config.enable_core }}"
+        enable_banner: "{{ check_response.security_compliance_config.enable_banner }}"
+        enable_high_strength_password: "{{ check_response.security_compliance_config.enable_high_strength_password }}"
+        ssh_security_level: "{{ check_response.security_compliance_config.ssh_security_level }}"
+
+        enable_aide_h: "{{ check_response.hypervisor_security_compliance_config.enable_aide }}"
+        enable_core_h: "{{ check_response.hypervisor_security_compliance_config.enable_core }}"
+        enable_banner_h: "{{ check_response.hypervisor_security_compliance_config.enable_banner }}"
+        enable_high_strength_password_h: "{{ check_response.hypervisor_security_compliance_config.enable_high_strength_password }}"
+        ssh_security_level_h: "{{ check_response.hypervisor_security_compliance_config.ssh_security_level }}"
+
+        storage_usage_bytes: "{{ check_response.usage_stats['storage.usage_bytes'] }}"
+        fault_tolerance_domain: "{{ check_response.fault_tolerance_domain_type }}"
+        hypervisor_cpu_usage: "{{ check_response.stats.hypervisor_cpu_usage_ppm }}"
+        hypervisor_memory_usage: "{{ check_response.stats.hypervisor_memory_usage_ppm }}"
+
+    - name: Set Fact for check cluster redundancy state
+      ansible.builtin.set_fact:
+        cluster_redundancy_state: "{{ 'GOOD' if current_redundancy_factor == desired_redundancy_factor else 'BAD'}}"
+        num_nodes: "{{ num_nodes | int}}"
+        hypervisor_cpu_usage_ppm: "{{ '%0.2f'|format(hypervisor_cpu_usage | float / 10000) }}"
+        hypervisor_memory_usage_ppm: "{{ '%0.2f'|format(hypervisor_memory_usage | float / 10000) }}"
+        safe_storage_usage_ppm: "{{ '%0.2f'|format(storage_usage_bytes | float / 10000)}}"
+
+    - name: Set Fact for global num nodes
+      ansible.builtin.set_fact:
+        total_num_nodes: "{{ (total_num_nodes | int) + ( num_nodes | int) }}"
+
+    - name: Add Previous Checks to Global Fact Dict
+      ansible.builtin.set_fact:
+        values_dict:
+          "{{ values_dict | combine({check_response.uuid: {
+          'cluster_fqdn' : cluster_fqdn,
+          'cluster_external_ipaddress': cluster_external_ipaddress,
+          'is_lts' : is_lts,
+          'enable_lock_down' : enable_lock_down,
+          'enable_rebuild_reservation' : enable_rebuild_reservation,
+          'name_servers' : (name_servers | int),
+          'ntp_servers' : (ntp_servers | int),
+          'cluster_redundancy_state' : cluster_redundancy_state,
+          'enable_aide' : enable_aide,
+          'enable_core' : enable_core,
+          'enable_banner' : enable_banner,
+          'enable_high_strength_password' : enable_high_strength_password,
+          'ssh_security_level' : ssh_security_level,
+          'enable_aide_h' : enable_aide_h,
+          'enable_core_h' : enable_core_h,
+          'enable_banner_h' : enable_banner_h,
+          'enable_high_strength_password_h' : enable_high_strength_password_h,
+          'ssh_security_level_h' : ssh_security_level_h,
+          'storage_usage_bytes' : storage_usage_bytes,
+          'safe_storage_usage_ppm' : safe_storage_usage_ppm,
+          'fault_tolerance_domain': fault_tolerance_domain,
+          'num_nodes': (num_nodes | int),
+          'data_in_transit_enabled': data_in_transit_enabled,
+          'version': version,
+          'current_redundancy_factor': (current_redundancy_factor | int),
+          'hypervisor_types': hypervisor_types,
+          'hypervisor_cpu_usage': (hypervisor_cpu_usage_ppm | float),
+          'hypervisor_memory_usage': (hypervisor_memory_usage_ppm | float),
+          'node_fault_tolerant_capacity_per': -1
+          }}, recursive=true) }}"
+
+
+  rescue:
+    - name: Add Previous Checks to Global Fact Dict
+      ansible.builtin.set_fact:
+        values_dict:
+          "{{ values_dict | combine({check_response.uuid: {
+          'cluster_fqdn' : '',
+          'is_encrypted' : 'ERROR',
+          'enable_rebuild_reservation' : 'ERROR',
+          'name_servers' : -1,
+          'ntp_servers' : -1,
+          'cluster_redundancy_state' : 'ERROR',
+          'enable_aide' : 'ERROR',
+          'enable_core' : 'ERROR',
+          'enable_banner' : 'ERROR',
+          'enable_high_strength_password' : 'ERROR',
+          'ssh_security_level' : 'ERROR',
+          'enable_aide_h' : 'ERROR',
+          'enable_core_h' : 'ERROR',
+          'enable_banner_h' : 'ERROR',
+          'enable_high_strength_password_h' : 'ERROR',
+          'ssh_security_level_h' : 'ERROR',
+          'storage_usage_bytes' : -1,
+          'fault_tolerance_domain': 'ERROR',
+          'num_nodes': -1,
+          'data_in_transit_enabled': 'ERROR',
+          'version': 'ERROR',
+          'h_version': 'ERROR',
+          'current_redundancy_factor': -1,
+          'hypervisor_types' : 'N/A',
+          'node_fault_tolerant_capacity_per': -1
+          }}, recursive=true) }}"
+
+- name: Get the path of the file
+  ansible.builtin.debug:
+    var: values_dict
+  no_log: true

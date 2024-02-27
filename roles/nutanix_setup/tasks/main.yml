@@ -1,0 +1,19 @@
+---
+- name: Debug PC array
+  ansible.builtin.debug:
+    var: prism_central_array
+
+- name: Create a global dict for the summary
+  ansible.builtin.set_fact:
+    global_summary_dict: "{{ global_summary_dict | default({}) | combine({ 'global_num_pc' : ( prism_central_array | length ) }, recursive=true)}}"
+    total_num_nodes: 0
+
+
+- name: Collect Prism Element information from Prism Central
+  ansible.builtin.include_tasks: cluster_mapping.yml
+  with_items: "{{ prism_central_array}}"
+  loop_control:
+    loop_var: address
+  vars:
+    prism_v3_api: "https://{{ address }}:9440/api/nutanix/v3"
+    prism_v2_api: "https://{{ address }}:9440/PrismGateway/services/rest/v2.0"

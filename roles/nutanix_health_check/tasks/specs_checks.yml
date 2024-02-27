@@ -1,0 +1,39 @@
+---
+- name: Storage checks
+  block:
+    - name: Get cluster storage resiliency values
+      ansible.builtin.uri:
+        url: "{{ prism_v3_api }}/groups"
+        method: POST
+        status_code: 200
+        headers:
+          Content-Type: "application/json"
+          Accept: "application/json"
+          Authorization: "{{ nutanix_api_auth }}"
+        body_format: json
+        body:
+          entity_type: "storage_summary"
+          group_member_attributes:
+            - attribute: "node_fault_tolerant_capacity"
+          entity_ids: "{{ item.value }}"
+          group_member_count: 50
+          group_member_offset: 0
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ timeout }}"
+      register: storage_summary
+
+    - name: Set entity_results as a fact
+      ansible.builtin.set_fact:
+        entity_results: "{{ storage_summary.json.group_results[0].entity_results}}"
+
+    - name: Call basic_checks_tasks to perform check on invidiual cluster
+      ansible.builtin.include_tasks: spec_checks_tasks.yml
+      loop: "{{ entity_results }}"
+      loop_control:
+        loop_var: entity_val
+      no_log: true
+
+  rescue:
+    - name: Print Failed Message 
+      debug:
+        msg: "Failed to get the storage resiliency"

@@ -1,0 +1,45 @@
+---
+- name: Get all require details
+  block:
+    - name: Get data for HA for all the clustesr
+      ansible.builtin.uri:
+        url: "{{ prism_v2_api }}/clusters"
+        method: GET
+        status_code: 200
+        headers:
+          Content-Type: "application/json"
+          Accept: "application/json"
+          Authorization: "{{ nutanix_api_auth }}"
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ timeout }}"
+      register: clusters
+
+
+    - name: Get data for HA for all the clustesr
+      ansible.builtin.uri:
+        url: "{{ prism_v2_api }}/ha?proxyClusterUuid=all_clusters"
+        method: GET
+        status_code: 200
+        headers:
+          Content-Type: "application/json"
+          Accept: "application/json"
+          Authorization: "{{ nutanix_api_auth }}"
+          Cookie: "{{ clusters.set_cookie }}"
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ timeout }}"
+      register: ha_check
+
+    - name: Set fact for HA info
+      ansible.builtin.set_fact:
+        values_dict: "{{ values_dict | combine({
+          item.key: { 'ha_state': item.value.successResponse.ha_state | default(item.value.errorResponse.error)}},
+          recursive=true)}}"
+      with_items: "{{ ha_check.json | dict2items }}"
+
+  rescue:
+    - name: Set fact for error HA info
+      ansible.builtin.set_fact:
+        values_dict: "{{ values_dict | combine({
+         item.key: { 'ha_state': -1}},
+            recursive=true)}}"
+      with_items: "{{ ha_check.json | dict2items }}"

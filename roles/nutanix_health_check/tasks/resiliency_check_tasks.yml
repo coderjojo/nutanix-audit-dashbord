@@ -1,0 +1,97 @@
+---
+- name: Get cluster resiliency status
+  ansible.builtin.uri:
+    url: "{{ prism_v3_api }}/fanout"
+    method: POST
+    status_code: 200
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+      Authorization: "{{ nutanix_api_auth }}"
+    body_format: json
+    body:
+      entity_type: "cluster_resiliency_info"
+      group_member_attributes:
+        - attribute: "resiliency_status"
+        - attribute: "status_description"
+        - attribute: "configured_failure_domain"
+        - attribute: "current_failure_domain"
+        - attribute: "failure_domain_degraded"
+        - attribute: "configured_fault_tolerance"
+        - attribute: "current_fault_tolerance"
+        - attribute: "fault_tolerance_degraded"
+      group_member_count: 50
+      group_member_offset: 0
+      entity_ids: "{{ [uuid] }}"
+    validate_certs: "{{ validate_certs }}"
+    timeout: 60
+  register: resiliency_status
+
+- name: Set resiliency status
+  ansible.builtin.set_fact:
+    status_mapping: "{{ status_mapping | default({}) | combine({ item.entity_id: item.data[0]['values'][0]['values'][0] }) }}"
+    desc: "{{ desc | default({}) | combine({ item.entity_id: item.data[1]['values'][0]['values'][0] }) }}"
+    failure_domain: "{{ failure_domain | default({}) | combine({ item.entity_id: item.data[2]['values'][0]['values'][0] }) }}"
+    curr_failure_domain: "{{ curr_failure_domain | default({}) | combine({ item.entity_id: item.data[3]['values'][0]['values'][0] }) }}"
+    failure_domain_deg: "{{ failure_domain_deg | default({}) | combine({ item.entity_id: item.data[4]['values'][0]['values'][0] }) }}"
+    fault_tol: "{{ fault_tol | default({}) | combine({ item.entity_id: item.data[5]['values'][0]['values'][0] }) }}"
+    current_fault_tol: "{{ current_fault_tol | default({}) | combine({ item.entity_id: item.data[6]['values'][0]['values'][0] }) }}"
+    fault_tol_deg: "{{ fault_tol_deg | default({}) | combine({ item.entity_id: item.data[7]['values'][0]['values'][0] }) }}"
+  with_items: "{{ resiliency_status.json.group_results[0].entity_results }}"
+  no_log: true
+
+- name: Set resiliency status
+  ansible.builtin.debug:
+    var: "{{ status_mapping | default({}) | combine({ item.entity_id: item.data[0]['values'][0]['values'][0] }) }}"
+  with_items: "{{ resiliency_status.json.group_results[0].entity_results }}"
+  no_log: true
+
+- name: Update Data to global fact (data_resilency_status)
+  ansible.builtin.set_fact:
+    values_dict: "{{ values_dict | default({}) | combine({ item.key : {'data_resilency': item.value}}, recursive=true) }}"
+  with_items: "{{ status_mapping | dict2items }}"
+  no_log: true
+
+- name: Update Data to global fact (data_resilency_desc)
+  ansible.builtin.set_fact:
+    values_dict: "{{ values_dict | default({}) | combine({ item.key : {'data_resilency_desc': item.value}}, recursive=true) }}"
+  with_items: "{{ desc | dict2items }}"
+  no_log: true
+
+
+- name: Update Data to global fact (data_resilency_failure_domain)
+  ansible.builtin.set_fact:
+    values_dict: "{{ values_dict | default({}) | combine({ item.key : {'configured_failure_domain': item.value}}, recursive=true) }}"
+  with_items: "{{ failure_domain | dict2items }}"
+  no_log: true
+
+- name: Update Data to global fact (data_resilency_current_failure_domain)
+  ansible.builtin.set_fact:
+    values_dict: "{{ values_dict | default({}) | combine({ item.key : {'current_failure_domain': item.value}}, recursive=true) }}"
+  with_items: "{{ curr_failure_domain | dict2items }}"
+  no_log: true
+
+- name: Update Data to global fact (data_resilency_failure_domain_degraded)
+  ansible.builtin.set_fact:
+    values_dict: "{{ values_dict | default({}) | combine({ item.key : {'failure_domain_degraded': item.value}}, recursive=true) }}"
+  with_items: "{{ failure_domain_deg | dict2items }}"
+  no_log: true
+
+- name: Update Data to global fact (data_resilency_configured_fault_tolerance)
+  ansible.builtin.set_fact:
+    values_dict: "{{ values_dict | default({}) | combine({ item.key : {'configured_fault_tolerance': item.value}}, recursive=true) }}"
+  with_items: "{{ fault_tol | dict2items }}"
+  no_log: true
+
+- name: Update Data to global fact (data_resilency_current_fault_tolerance)
+  ansible.builtin.set_fact:
+    values_dict: "{{ values_dict | default({}) | combine({ item.key : {'current_fault_tolerance': item.value}}, recursive=true) }}"
+  with_items: "{{ current_fault_tol | dict2items }}"
+  no_log: true
+
+- name: Update Data to global fact (data_resilency_fault_tolerance_degraded)
+  ansible.builtin.set_fact:
+    values_dict: "{{ values_dict | default({}) | combine({ item.key : {'fault_tolerance_degraded': item.value}}, recursive=true) }}"
+  with_items: "{{ fault_tol_deg | dict2items }}"
+  no_log: true
+

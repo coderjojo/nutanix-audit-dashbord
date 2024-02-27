@@ -1,0 +1,47 @@
+---
+
+- name: Get data for license details for PC
+  ansible.builtin.uri:
+    url: "{{ prism_v1_api }}/license"
+    method: GET
+    status_code: 200
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+      Authorization: "{{ nutanix_api_auth }}"
+    validate_certs: "{{ validate_certs }}"
+    timeout: "{{ timeout }}"
+  register: license_check
+
+- name: Get data for license details
+  ansible.builtin.uri:
+    url: "{{ prism_v1_api }}/license?showAllClusters=true&proxyClusterUuid=all_clusters"
+    method: GET
+    status_code: 200
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+      Authorization: "{{ nutanix_api_auth }}"
+      Cookie: "{{ license_check.set_cookie }}"
+    validate_certs: "{{ validate_certs }}"
+    timeout: "{{ timeout }}"
+  register: license_check_all
+
+- name: Go through all the clsuters
+  ansible.builtin.include_tasks: license_checks_tasks.yml
+  with_items: "{{ license_check_all.json | dict2items }}"
+
+- name: Set fact for HA info
+  ansible.builtin.set_fact:
+    values_dict: "{{ values_dict | combine({
+      item.key: { 'ha_state': item.value.successResponse.ha_state | default(item.value.errorResponse.error)}},
+      recursive=true)}}"
+  with_items: "{{ ha_check.json | dict2items }}"
+
+- name: Set fact for License info
+  ansible.builtin.set_fact:
+    values_dict: "{{ values_dict | combine({
+      item.uuid: { 'license_details': item.licenseDetails[0].category }},
+      recursive=true)}}"
+  with_items: "{{ license_check.json.licenseInfoDTO.pcDetailsDTO.clusters }}"
+  no_log: true

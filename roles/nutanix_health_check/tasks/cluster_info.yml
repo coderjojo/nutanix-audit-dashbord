@@ -1,0 +1,83 @@
+---
+- name: Perform cluster detais and vm details checks
+  block:
+    - name: Get cluster data
+      ansible.builtin.uri:
+        url: "{{ prism_v3_api }}/groups"
+        method: GET
+        status_code: 200
+        headers:
+          Content-Type: "application/json"
+          Accept: "application/json"
+          Authorization: "{{ nutanix_api_auth }}"
+        body_format: json
+        body:
+          entity_type: "cluster"
+          group_member_sort_attribute: "cluster_name"
+          group_member_sort_orde: "ASCENDING"
+          group_member_attributes:
+            - attribute: "cluster_name"
+            - attribute: "version"
+            - attribute: "hypervisor_types"
+            - attribute: "num_nodes"
+            - attribute: "num_vms"
+            - attribute: "capacity.runway"
+            - attribute: "capacity.inefficient_vm_num"
+        validate_certs: "{{ validate_certs }}"
+        timeout: 60
+      register: cluster_info_status
+
+    - name: Set cluster_value_status
+      ansible.builtin.set_fact:
+        cluster_name_mapping: "{{ cluster_name_mapping | default({}) | combine({ item.entity_id: item.data[0]['values'][0]['values'][0] }) }}"
+        version_mapping: "{{ version_mapping | default({}) | combine({ item.entity_id: item.data[1]['values'][0]['values'][0] }) }}"
+        hypervisor_types_mapping: "{{ hypervisor_types_mapping | default({}) | combine({ item.entity_id: item.data[2]['values'][0]['values'][0] }) }}"
+        num_nodes_mapping: "{{ num_nodes_mapping | default({}) | combine({ item.entity_id: item.data[3]['values'][0]['values'][0] }) }}"
+        num_vms_mapping: "{{ num_vms_mapping | default({}) | combine({ item.entity_id: item.data[4]['values'][0]['values'][0] }) }}"
+        capacity_runway_mapping: "{{ capacity_runway_mapping | default({}) | combine({ item.entity_id: item.data[5]['values'][0]['values'][0] }) }}"
+        capacity_vm_mapping: "{{ capacity_vm_mapping | default({}) | combine({ item.entity_id: item.data[6]['values'][0]['values'][0] }) }}"
+      with_items: "{{ cluster_info_status.json.group_results[0].entity_results }}"
+
+    - name: Update Data to global fact (cluster_name_info)
+      ansible.builtin.set_fact:
+        values_dict: "{{ values_dict | default({}) | combine({ item.key : {'cluster_name_info': item.value}}, recursive=true) }}"
+      with_items: "{{ cluster_name_mapping | dict2items }}"
+
+    - name: Update Data to global fact (version_info)
+      ansible.builtin.set_fact:
+        values_dict: "{{ values_dict | default({}) | combine({ item.key : {'version_info': item.value}}, recursive=true) }}"
+      with_items: "{{ version_mapping | dict2items }}"
+
+    - name: Update Data to global fact (hypervisor_type_info)
+      ansible.builtin.set_fact:
+        values_dict: "{{ values_dict | default({}) | combine({ item.key : {'hypervisor_type_info': item.value}}, recursive=true) }}"
+      with_items: "{{ hypervisor_types_mapping | dict2items }}"
+
+    - name: Update Data to global fact (num_nodes_info)
+      ansible.builtin.set_fact:
+        values_dict: "{{ values_dict | default({}) | combine({ item.key : {'num_nodes_info': item.value}}, recursive=true) }}"
+      with_items: "{{ num_nodes_mapping | dict2items }}"
+
+    - name: Update Data to global fact (num_vms_info)
+      ansible.builtin.set_fact:
+        values_dict: "{{ values_dict | default({}) | combine({ item.key : {'num_vms_info': item.value}}, recursive=true) }}"
+      with_items: "{{ num_vms_mapping | dict2items }}"
+
+    - name: Update Data to global fact (capacity_runway_info)
+      ansible.builtin.set_fact:
+        values_dict: "{{ values_dict | default({}) | combine({ item.key : {'capacity_runway_info': item.value}}, recursive=true) }}"
+      with_items: "{{ capacity_runway_mapping | dict2items }}"
+
+    - name: Update Data to global fact (capacity_vm_info)
+      ansible.builtin.set_fact:
+        values_dict: "{{ values_dict | default({}) | combine({ item.key : {'capacity_vm_info': item.value}}, recursive=true) }}"
+      with_items: "{{ capacity_vm_mapping | dict2items }}"
+
+    - name: Debug Global Dict
+      ansible.builtin.debug:
+        var: values_dict
+
+  rescue:
+    - name: Error occured while getting cluster resiliency info, setting up default values.
+      ansible.builtin.debug:
+        msg: "{{  cluster_info_status.json }}"
